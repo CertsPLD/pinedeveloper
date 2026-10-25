@@ -144,3 +144,7 @@ tbody tr:hover{background:#171d27}
 
 .ide-description-field{grid-column:1/-1}
 @media(max-width:600px){.ide-description-field{grid-column:1/-1}}
+
+.ide-pane-title>span{display:flex;align-items:center;gap:4px}
+.ide-pane-title>span button{width:22px;height:22px;display:grid;place-items:center;border:1px solid #29313d;border-radius:5px;background:#151b25;color:#aab5c4;font-size:14px;line-height:1}
+.ide-pane-title>span button:disabled{opacity:.3;cursor:not-allowed}
