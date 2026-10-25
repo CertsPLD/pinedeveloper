@@ -1,6 +1,6 @@
 import {cookie, current, ensureSchemas, id, json, now, sha, teamFor, type Account, type Env} from './auth';
 
-const PINE_API = 'https://pineaccounts.base44.app';
+const PINE_API = 'https://pineaccounts.pages.dev';
 const SESSION_SECONDS = 30 * 86400;
 
 type PineUser = { id: string; name: string; email: string };
@@ -32,7 +32,7 @@ function pineSessionFromResponse(response: Response) {
   const extendedHeaders = response.headers as Headers & { getSetCookie?: () => string[] };
   const cookies = extendedHeaders.getSetCookie?.() || [response.headers.get('set-cookie') || ''];
   for (const line of cookies) {
-    const match = line.match(/(?:^|[,;\s])pine_session=([^;,\s]+)/);
+    const match = line.match(/(?:^|[,;\\s])pine_session=([^;,\\s]+)/);
     if (match) return 'pine_session=' + match[1];
   }
   return '';
@@ -158,7 +158,7 @@ export async function pineAuthenticate(request: Request, env: Env, path: '/api/a
     const timedOut = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
     return json({
       error: timedOut
-        ? 'Pine Accounts no respondio en 12 segundos. La solicitud se ha cancelado; revisa la disponibilidad de https://pineaccounts.base44.app.'
+        ? 'Pine Accounts no respondio en 12 segundos. La solicitud se ha cancelado; revisa la disponibilidad de https://pineaccounts.pages.dev.'
         : 'Pine Developer: ' + message
     }, 502);
   }
@@ -218,7 +218,7 @@ export async function pineLogout(request: Request, env: Env) {
     await callPine('/api/auth/logout', 'POST', request, {});
   } catch {}
   const raw = request.headers.get('Cookie') || '';
-  const localMatch = raw.match(/(?:^|;\s*)pine_dev_session=([^;]+)/);
+  const localMatch = raw.match(/(?:^|;\\s*)pine_dev_session=([^;]+)/);
   if (localMatch) {
     const token = decodeURIComponent(localMatch[1]);
     await env.developer.prepare('DELETE FROM sessions WHERE token_hash=?').bind(await sha(token)).run().catch(() => {});
