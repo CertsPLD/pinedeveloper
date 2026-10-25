@@ -16,11 +16,15 @@ async function callPine(path: string, method: string, request: Request, body?: u
   const session = cookieOverride || pineCookieFromRequest(request);
   if (session) headers.set('cookie', session);
   if (body !== undefined) headers.set('content-type', 'application/json');
+  // Never leave the sign-in form spinning forever if the upstream service stalls.
+  // Cloudflare Workers supports AbortSignal.timeout; the catch in pineAuthenticate
+  // converts this into a visible JSON error for the UI.
   return fetch(PINE_API + path, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
-    redirect: 'follow'
+    redirect: 'follow',
+    signal: AbortSignal.timeout(12000)
   });
 }
 
@@ -151,7 +155,12 @@ export async function pineAuthenticate(request: Request, env: Env, path: '/api/a
     return new Response(JSON.stringify({ account: local.account, team: local.team, developer, ...(warning ? { warning } : {}) }), { status: 200, headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'error desconocido';
-    return json({ error: 'Pine Developer: ' + message }, 502);
+    const timedOut = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
+    return json({
+      error: timedOut
+        ? 'Pine Accounts no respondio en 12 segundos. La solicitud se ha cancelado; revisa la disponibilidad de https://pineaccounts.base44.app.'
+        : 'Pine Developer: ' + message
+    }, 502);
   }
 }
 
