@@ -32,6 +32,8 @@ export async function ensureSchemas(env: Env) {
    "CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at)",
    "CREATE TABLE IF NOT EXISTS apps (id TEXT PRIMARY KEY, team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE, name TEXT NOT NULL, bundle_id TEXT NOT NULL, platform TEXT NOT NULL DEFAULT 'masOS', sku TEXT, status TEXT NOT NULL DEFAULT 'development', description TEXT, created_at TEXT NOT NULL, updated_at TEXT, UNIQUE(team_id,bundle_id))",
    "CREATE INDEX IF NOT EXISTS idx_apps_team_created ON apps(team_id,created_at)",
+   "CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE, app_id TEXT NOT NULL REFERENCES apps(id) ON DELETE CASCADE, files TEXT NOT NULL DEFAULT '{}', status TEXT NOT NULL DEFAULT 'draft', created_at TEXT NOT NULL, updated_at TEXT, UNIQUE(team_id,app_id))",
+   "CREATE INDEX IF NOT EXISTS idx_projects_team_app ON projects(team_id,app_id)",
    "CREATE TABLE IF NOT EXISTS identifiers (id TEXT PRIMARY KEY, team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE, identifier TEXT NOT NULL, name TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'explicit', capabilities TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL, UNIQUE(team_id,identifier))",
    "CREATE INDEX IF NOT EXISTS idx_identifiers_team_created ON identifiers(team_id,created_at)",
    "CREATE TABLE IF NOT EXISTS devices (id TEXT PRIMARY KEY, team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE, name TEXT NOT NULL, platform TEXT NOT NULL DEFAULT 'masOS', udid TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'enabled', created_at TEXT NOT NULL, UNIQUE(team_id,udid))",
