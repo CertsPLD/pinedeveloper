@@ -67,3 +67,28 @@ tbody tr:hover{background:#171d27}
 .auth-foot{border-color:#29313d;color:#929baa}
 .auth-switch button{color:#69adff}
 .auth-page footer{color:#7f8999}
+
+/* expanded signing certificate form */
+.certificate-details{display:grid;gap:12px;margin:0 0 18px;padding:15px;border:1px solid #29313d;border-radius:12px;background:#10151d}
+.certificate-section-title{display:flex;align-items:center;gap:10px}
+.certificate-section-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:#16362a;color:#64d9a3;font-size:19px}
+.certificate-section-title>div{display:grid;gap:4px}
+.certificate-section-title b{font-size:11px;color:#e6e9ef}
+.certificate-section-title small,.certificate-algorithm small{font-size:10px;color:#929baa}
+.certificate-algorithm{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid #29313d;border-radius:9px;background:#131821}
+.certificate-algorithm>span:first-child{display:grid;gap:5px}
+.certificate-algorithm b{font-size:11px;color:#e6e9ef}
+.algorithm-badge{padding:5px 7px;border-radius:6px;background:#172e49;color:#7ebaff;font-size:9px;font-weight:700}
+.certificate-security-note{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-radius:9px;background:#142b25;color:#64d9a3}
+.certificate-security-note>span{font-size:17px}
+.certificate-security-note b{font-size:10px;color:#9ce8c4}
+.certificate-security-note p{font-size:10px;line-height:1.6;color:#b5c8c0;margin:5px 0 0}
+.certificate-extra-fields{display:grid;gap:13px}
+.certificate-extra-fields label{display:grid;gap:7px;font-size:10px;font-weight:600;color:#d0d6e0}
+.certificate-extra-fields select{width:100%;min-height:39px;padding:10px 11px;border:1px solid #303846;border-radius:8px;background:#0f141c;color:#e6e9ef;font-size:11px}
+.certificate-extra-fields label>small{font-size:9px;font-weight:400;color:#929baa}
+.certificate-summary{display:grid;gap:6px;padding:12px;border:1px solid #29313d;border-radius:9px;background:#10151d}
+.certificate-summary span{font-size:9px;color:#929baa}
+.certificate-summary b{font-size:10px;color:#e6e9ef}
+.certificate-summary small{font-size:9px;line-height:1.5;color:#929baa}
+@media(max-width:700px){.certificate-details{padding:12px}.certificate-algorithm{align-items:flex-start}}
