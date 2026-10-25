@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pinedeveloper",
+  "compatibility_date": "2026-10-25",
+  "pages_build_output_dir": "./dist",
+  "d1_databases": [
+    { "binding": "developer", "database_name": "developer", "database_id": "410b9b8d-d7ad-4cec-a1c2-e19a3dfa8269", "migrations_dir": "migrations/developer" },
+    { "binding": "certificates", "database_name": "certificates", "database_id": "e5ae0c02-6743-46de-8567-284980fb9423", "migrations_dir": "migrations/certificates" }
+  ]
+}
