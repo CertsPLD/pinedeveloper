@@ -8,7 +8,7 @@ export async function sha(value:string){return hex(await crypto.subtle.digest('S
 export async function passwordHash(password:string,salt:string){const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveBits']);const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:new TextEncoder().encode(salt),iterations:100000,hash:'SHA-256'},key,256);return btoa(String.fromCharCode(...new Uint8Array(bits)))}
 export async function body(request:Request){try{return await request.json() as Record<string,unknown>}catch{return {}}}
 export async function current(request:Request,env:Env):Promise<Account|null>{
- const cookie=request.headers.get('Cookie')||'';const match=cookie.match(/(?:^|;\s*)pine_dev_session=([^;]+)/);if(!match)return null;
+ const cookieHeader=request.headers.get('Cookie')||'';const match=cookieHeader.match(/(?:^|;\s*)pine_dev_session=([^;]+)/);if(!match)return null;
  const token=decodeURIComponent(match[1]);if(token.length<32)return null;
  const tokenHash=await sha(token);const row=await env.developer.prepare('SELECT a.id,a.email,a.display_name,s.expires_at FROM sessions s JOIN accounts a ON a.id=s.account_id WHERE s.token_hash=?').bind(tokenHash).first<Account&{expires_at:string}>();
  if(!row||row.expires_at<=now()){if(row)await env.developer.prepare('DELETE FROM sessions WHERE token_hash=?').bind(tokenHash).run();return null}
