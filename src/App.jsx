@@ -53,7 +53,7 @@ export default function App(){
   <label>sku<input value={studioMeta.sku} onChange={e=>setStudioMeta({...studioMeta,sku:e.target.value})} placeholder="opcional"/></label><label className="ide-description-field">descripcion<input value={studioMeta.description} onChange={e=>setStudioMeta({...studioMeta,description:e.target.value})} placeholder="que hace tu app"/></label>
  </div>
  <div className="ide-body">
-  <aside className="ide-files"><div className="ide-pane-title">EXPLORADOR <button onClick={()=>{const name=prompt('nombre del archivo (ej. src/utils.js)');if(name&&name.trim()){setStudioFiles({...studioFiles,[name.trim()]:'// escribe tu codigo aqui'});setStudioFile(name.trim())}}}>＋</button></div>
+  <aside className="ide-files"><div className="ide-pane-title">EXPLORADOR <span><button title="nuevo archivo" onClick={()=>{const name=prompt('nombre del archivo (ej. src/utils.js)');if(name&&name.trim()){setStudioFiles({...studioFiles,[name.trim()]:'// escribe tu codigo aqui'});setStudioFile(name.trim())}}}>＋</button><button title="eliminar archivo actual" disabled={Object.keys(studioFiles).length<2} onClick={()=>{if(Object.keys(studioFiles).length<2)return;const next=Object.fromEntries(Object.entries(studioFiles).filter(([key])=>key!==studioFile));setStudioFiles(next);setStudioFile(Object.keys(next)[0])}}>×</button></span></div>
    {Object.keys(studioFiles).map(name=><button key={name} className={studioFile===name?'selected':''} onClick={()=>setStudioFile(name)}><span>{name.endsWith('.css')?'◉':name.endsWith('.html')?'◇':name.endsWith('.json')?'{}':name.endsWith('.js')?'JS':'▤'}</span>{name}</button>)}
    <div className="ide-file-tip">los archivos se guardan en el proyecto de tu equipo</div>
   </aside>
