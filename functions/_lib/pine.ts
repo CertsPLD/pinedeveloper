@@ -1,6 +1,6 @@
-import {cookie, current, id, json, now, sha, type Account, type Env} from './auth';
+import {cookie, current, ensureSchemas, id, json, now, sha, type Account, type Env} from './auth';
 
-const PINE_API = 'https://pineaccounts.pages.dev';
+const PINE_API = 'https://accounts.pine.com';
 const SESSION_SECONDS = 30 * 86400;
 
 type PineUser = { id: string; name: string; email: string };
@@ -58,6 +58,7 @@ async function ensureDeveloperAccount(user: PineUser, sessionCookie: string) {
 }
 
 async function ensureLocalIdentity(env: Env, user: PineUser): Promise<{ account: Account; team: { id: string; name: string; role: string; team_type: string } }> {
+  await ensureSchemas(env);
   const created = now();
   const email = user.email.trim().toLowerCase();
 
