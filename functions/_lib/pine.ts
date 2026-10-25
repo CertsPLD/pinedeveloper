@@ -1,4 +1,4 @@
-import {cookie, current, ensureSchemas, id, json, now, sha, type Account, type Env} from './auth';
+import {cookie, current, ensureSchemas, id, json, now, sha, teamFor, type Account, type Env} from './auth';
 
 const PINE_API = 'https://pineaccounts.base44.app';
 const SESSION_SECONDS = 30 * 86400;
@@ -125,22 +125,29 @@ export async function pineAuthenticate(request: Request, env: Env, path: '/api/a
     }
 
     const pineSession = pineSessionFromResponse(upstream);
-    if (!pineSession) {
-      return json({ error: 'Pine Accounts acepto la solicitud pero no devolvio la cookie pine_session. Comprueba el endpoint de autenticacion de Pine Accounts.' }, 502);
+    let developer = Boolean(pineSession);
+    let warning: string | undefined;
+
+    if (pineSession) {
+      try {
+        await ensureDeveloperAccount(data.user, pineSession);
+      } catch (error) {
+        developer = false;
+        warning = error instanceof Error ? error.message : 'no se pudo preparar la Developer Account';
+        console.error('Pine Developer Account setup failed:', warning);
+      }
+    } else {
+      // Pine may authenticate successfully while an intermediary omits Set-Cookie.
+      // Keep the already-verified login usable with our own HttpOnly session.
+      // Pine-only features remain marked as pending instead of discarding the login.
+      developer = false;
+      warning = 'Pine Accounts valido la cuenta pero no entrego pine_session; la sesion del portal esta activa, aunque las funciones que necesitan la sesion de Pine quedan pendientes.';
+      console.error('Pine auth response did not include the pine_session cookie');
     }
 
-    let developer = true;
-    let warning: string | undefined;
-    try {
-      await ensureDeveloperAccount(data.user, pineSession);
-    } catch (error) {
-      developer = false;
-      warning = error instanceof Error ? error.message : 'no se pudo preparar la Developer Account';
-      console.error('Pine Developer Account setup failed:', warning);
-    }
     const local = await ensureLocalIdentity(env, data.user);
     const localCookie = await createLocalSession(env, local.account.id);
-    const headers = setCookies(localCookie, pineSession);
+    const headers = setCookies(localCookie, pineSession || undefined);
     return new Response(JSON.stringify({ account: local.account, team: local.team, developer, ...(warning ? { warning } : {}) }), { status: 200, headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'error desconocido';
@@ -150,30 +157,53 @@ export async function pineAuthenticate(request: Request, env: Env, path: '/api/a
 
 export async function pineCurrent(request: Request, env: Env) {
   try {
+    // The portal's own session is issued only after Pine has authenticated the user.
+    // Prefer it for page reloads so a missing/expired upstream cookie does not log
+    // the user out of the portal or make every navigation depend on Pine availability.
+    const localAccount = await current(request, env);
+    const pineSession = pineCookieFromRequest(request);
+
+    if (localAccount) {
+      const team = await teamFor(env, localAccount.id);
+      if (!pineSession) {
+        return json({
+          account: localAccount,
+          team,
+          developer: false,
+          warning: 'sesion del portal activa; Pine no envio pine_session, asi que las funciones que dependen directamente de Pine estan pendientes'
+        });
+      }
+      return json({ account: localAccount, team, developer: true });
+    }
+
     const upstream = await callPine('/api/auth/me', 'GET', request);
     const data = await upstream.json().catch(() => ({})) as PineAuthResponse;
     if (!upstream.ok || !data.user) return json({ error: 'inicia sesion para continuar' }, 401);
 
-    let developer = true;
+    let developer = Boolean(pineSession);
     let warning: string | undefined;
-    try {
-      await ensureDeveloperAccount(data.user, pineCookieFromRequest(request));
-    } catch (error) {
+    if (pineSession) {
+      try {
+        await ensureDeveloperAccount(data.user, pineSession);
+      } catch (error) {
+        developer = false;
+        warning = error instanceof Error ? error.message : 'no se pudo preparar la Developer Account';
+        console.error('Pine Developer Account setup failed:', warning);
+      }
+    } else {
       developer = false;
-      warning = error instanceof Error ? error.message : 'no se pudo preparar la Developer Account';
-      console.error('Pine Developer Account setup failed:', warning);
+      warning = 'Pine Accounts valido la sesion pero no entrego la cookie pine_session';
     }
+
     const local = await ensureLocalIdentity(env, data.user);
-    const existing = await current(request, env);
-    const localCookie = existing?.id === local.account.id ? undefined : await createLocalSession(env, local.account.id);
-    const headers = setCookies(localCookie);
+    const localCookie = await createLocalSession(env, local.account.id);
+    const headers = setCookies(localCookie, pineSession || undefined);
     return new Response(JSON.stringify({ account: local.account, team: local.team, developer, ...(warning ? { warning } : {}) }), { headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'error desconocido';
     return json({ error: 'Pine Developer no pudo verificar la sesion: ' + message }, 502);
   }
 }
-
 export async function pineLogout(request: Request, env: Env) {
   try {
     await callPine('/api/auth/logout', 'POST', request, {});
