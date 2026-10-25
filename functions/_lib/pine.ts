@@ -95,10 +95,20 @@ export async function pineAuthenticate(request: Request, env: Env, path: '/api/a
     const pineSession = pineSessionFromResponse(upstream);
     if (!pineSession) return json({ error: 'Pine Accounts no devolvio una sesion valida; revisa el servicio de autenticacion' }, 502);
     await ensureDeveloperAccount(data.user, pineSession);
-    const local = await ensureLocalIdentity(env, data.user);
-    const localCookie = await createLocalSession(env, local.account.id);
-    const headers = setCookies(new Response(null), localCookie, pineSession);
-    return new Response(JSON.stringify({ account: local.account, team: local.team, developer: true }), { status: 200, headers });
+    try {
+      const local = await ensureLocalIdentity(env, data.user);
+      const localCookie = await createLocalSession(env, local.account.id);
+      const headers = setCookies(new Response(null), localCookie, pineSession);
+      return new Response(JSON.stringify({ account: local.account, team: local.team, developer: true }), { status: 200, headers });
+    } catch {
+      const headers = setCookies(new Response(null), undefined, pineSession);
+      return new Response(JSON.stringify({
+        account: { id: data.user.id, email: data.user.email, display_name: data.user.name },
+        team: null,
+        developer: true,
+        warning: 'Pine Accounts funciona, pero faltan las tablas de la base de datos developer para activar los recursos del portal'
+      }), { status: 200, headers });
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'error desconocido';
     return json({ error: 'no se pudo completar el acceso con Pine Accounts: ' + message }, 502);
@@ -110,11 +120,20 @@ export async function pineCurrent(request: Request, env: Env) {
     const upstream = await callPine('/api/auth/me', 'GET', request);
     const data = await upstream.json().catch(() => ({})) as PineAuthResponse;
     if (!upstream.ok || !data.user) return json({ error: 'inicia sesion para continuar' }, 401);
-    const local = await ensureLocalIdentity(env, data.user);
-    const existing = await current(request, env);
-    const localCookie = existing?.id === local.account.id ? undefined : await createLocalSession(env, local.account.id);
-    const headers = setCookies(new Response(null), localCookie);
-    return new Response(JSON.stringify({ account: local.account, team: local.team, developer: true }), { headers });
+    try {
+      const local = await ensureLocalIdentity(env, data.user);
+      const existing = await current(request, env);
+      const localCookie = existing?.id === local.account.id ? undefined : await createLocalSession(env, local.account.id);
+      const headers = setCookies(new Response(null), localCookie);
+      return new Response(JSON.stringify({ account: local.account, team: local.team, developer: true }), { headers });
+    } catch {
+      return new Response(JSON.stringify({
+        account: { id: data.user.id, email: data.user.email, display_name: data.user.name },
+        team: null,
+        developer: true,
+        warning: 'Pine Accounts funciona, pero faltan las tablas de la base de datos developer para activar los recursos del portal'
+      }), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'error desconocido';
     return json({ error: 'no se pudo verificar la sesion de Pine Accounts: ' + message }, 502);
