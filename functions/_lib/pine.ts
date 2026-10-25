@@ -32,7 +32,7 @@ function pineSessionFromResponse(response: Response) {
   const extendedHeaders = response.headers as Headers & { getSetCookie?: () => string[] };
   const cookies = extendedHeaders.getSetCookie?.() || [response.headers.get('set-cookie') || ''];
   for (const line of cookies) {
-    const match = line.match(/(?:^|[,;\\s])pine_session=([^;,\\s]+)/);
+    const match = line.match(/(?:^|[,;\s])pine_session=([^;,\s]+)/);
     if (match) return 'pine_session=' + match[1];
   }
   return '';
@@ -218,7 +218,7 @@ export async function pineLogout(request: Request, env: Env) {
     await callPine('/api/auth/logout', 'POST', request, {});
   } catch {}
   const raw = request.headers.get('Cookie') || '';
-  const localMatch = raw.match(/(?:^|;\\s*)pine_dev_session=([^;]+)/);
+  const localMatch = raw.match(/(?:^|;\s*)pine_dev_session=([^;]+)/);
   if (localMatch) {
     const token = decodeURIComponent(localMatch[1]);
     await env.developer.prepare('DELETE FROM sessions WHERE token_hash=?').bind(await sha(token)).run().catch(() => {});
