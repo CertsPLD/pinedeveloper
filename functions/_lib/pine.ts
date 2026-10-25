@@ -45,33 +45,24 @@ function setCookies(localCookie?: string, pineSession?: string) {
 }
 
 async function ensureDeveloperAccount(user: PineUser, sessionCookie: string) {
-  const headers = { accept: 'application/json', cookie: sessionCookie };
-  // A developer account may already exist. Read it first so a repeated login or
-  // /api/auth/me check does not try to create the same record again.
-  const existing = await fetch(PINE_API + '/api/developer', {
-    method: 'GET',
-    headers,
-    redirect: 'follow'
-  });
-
-  if (existing.ok) return;
-  if (existing.status !== 404) {
-    const data = await existing.json().catch(() => ({})) as { error?: string };
-    throw new Error(data.error || 'Pine Accounts no pudo comprobar la Developer Account (HTTP ' + existing.status + ')');
-  }
-
+  // Pine documents POST as idempotent: it returns the existing Developer
+  // Account when one already exists, or creates it otherwise. Do not infer
+  // absence from GET /api/developer because that endpoint can return 200/null.
   const response = await fetch(PINE_API + '/api/developer', {
     method: 'POST',
-    headers: { ...headers, 'content-type': 'application/json' },
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      cookie: sessionCookie
+    },
     body: JSON.stringify({ name: user.name, email: user.email }),
     redirect: 'follow'
   });
-  const data = await response.json().catch(() => ({})) as { error?: string };
+  const data = await response.json().catch(() => ({})) as { error?: string; account?: unknown; developer?: unknown };
   if (!response.ok) {
-    throw new Error(data.error || 'Pine Accounts no pudo crear la Developer Account (HTTP ' + response.status + ')');
+    throw new Error(data.error || 'Pine Accounts no pudo preparar la Developer Account (HTTP ' + response.status + ')');
   }
 }
-
 async function ensureLocalIdentity(env: Env, user: PineUser): Promise<{ account: Account; team: { id: string; name: string; role: string; team_type: string } }> {
   await ensureSchemas(env);
   const created = now();
@@ -138,11 +129,19 @@ export async function pineAuthenticate(request: Request, env: Env, path: '/api/a
       return json({ error: 'Pine Accounts acepto la solicitud pero no devolvio la cookie pine_session. Comprueba el endpoint de autenticacion de Pine Accounts.' }, 502);
     }
 
-    await ensureDeveloperAccount(data.user, pineSession);
+    let developer = true;
+    let warning: string | undefined;
+    try {
+      await ensureDeveloperAccount(data.user, pineSession);
+    } catch (error) {
+      developer = false;
+      warning = error instanceof Error ? error.message : 'no se pudo preparar la Developer Account';
+      console.error('Pine Developer Account setup failed:', warning);
+    }
     const local = await ensureLocalIdentity(env, data.user);
     const localCookie = await createLocalSession(env, local.account.id);
     const headers = setCookies(localCookie, pineSession);
-    return new Response(JSON.stringify({ account: local.account, team: local.team, developer: true }), { status: 200, headers });
+    return new Response(JSON.stringify({ account: local.account, team: local.team, developer, ...(warning ? { warning } : {}) }), { status: 200, headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'error desconocido';
     return json({ error: 'Pine Developer: ' + message }, 502);
@@ -155,12 +154,20 @@ export async function pineCurrent(request: Request, env: Env) {
     const data = await upstream.json().catch(() => ({})) as PineAuthResponse;
     if (!upstream.ok || !data.user) return json({ error: 'inicia sesion para continuar' }, 401);
 
-    await ensureDeveloperAccount(data.user, pineCookieFromRequest(request));
+    let developer = true;
+    let warning: string | undefined;
+    try {
+      await ensureDeveloperAccount(data.user, pineCookieFromRequest(request));
+    } catch (error) {
+      developer = false;
+      warning = error instanceof Error ? error.message : 'no se pudo preparar la Developer Account';
+      console.error('Pine Developer Account setup failed:', warning);
+    }
     const local = await ensureLocalIdentity(env, data.user);
     const existing = await current(request, env);
     const localCookie = existing?.id === local.account.id ? undefined : await createLocalSession(env, local.account.id);
     const headers = setCookies(localCookie);
-    return new Response(JSON.stringify({ account: local.account, team: local.team, developer: true }), { headers });
+    return new Response(JSON.stringify({ account: local.account, team: local.team, developer, ...(warning ? { warning } : {}) }), { headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'error desconocido';
     return json({ error: 'Pine Developer no pudo verificar la sesion: ' + message }, 502);
