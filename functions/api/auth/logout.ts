@@ -1,2 +1,4 @@
-import {clearCookie,current,json,sha,type Env} from '../../_lib/auth';
-export const onRequestPost:PagesFunction<Env>=async({request,env})=>{await current(request,env);const match=(request.headers.get('Cookie')||'').match(/(?:^|;\s*)pine_dev_session=([^;]+)/);if(match)await env.developer.prepare('DELETE FROM sessions WHERE token_hash=?').bind(await sha(decodeURIComponent(match[1]))).run();return new Response(JSON.stringify({ok:true}),{headers:{'content-type':'application/json','cache-control':'no-store','set-cookie':clearCookie}})};
+import {type Env} from '../../_lib/auth';
+import {pineLogout} from '../../_lib/pine';
+
+export const onRequestPost: PagesFunction<Env> = async ({request, env}) => pineLogout(request, env);
