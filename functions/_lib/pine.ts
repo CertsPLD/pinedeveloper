@@ -1,6 +1,6 @@
 import {cookie, current, ensureSchemas, id, json, now, sha, type Account, type Env} from './auth';
 
-const PINE_API = 'https://accounts.pine.com';
+const PINE_API = 'https://pineaccounts.base44.app';
 const SESSION_SECONDS = 30 * 86400;
 
 type PineUser = { id: string; name: string; email: string };
