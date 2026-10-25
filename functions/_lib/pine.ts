@@ -45,13 +45,28 @@ function setCookies(localCookie?: string, pineSession?: string) {
 }
 
 async function ensureDeveloperAccount(user: PineUser, sessionCookie: string) {
+  const headers = { accept: 'application/json', cookie: sessionCookie };
+  // A developer account may already exist. Read it first so a repeated login or
+  // /api/auth/me check does not try to create the same record again.
+  const existing = await fetch(PINE_API + '/api/developer', {
+    method: 'GET',
+    headers,
+    redirect: 'follow'
+  });
+
+  if (existing.ok) return;
+  if (existing.status !== 404) {
+    const data = await existing.json().catch(() => ({})) as { error?: string };
+    throw new Error(data.error || 'Pine Accounts no pudo comprobar la Developer Account (HTTP ' + existing.status + ')');
+  }
+
   const response = await fetch(PINE_API + '/api/developer', {
     method: 'POST',
-    headers: { accept: 'application/json', 'content-type': 'application/json', cookie: sessionCookie },
+    headers: { ...headers, 'content-type': 'application/json' },
     body: JSON.stringify({ name: user.name, email: user.email }),
     redirect: 'follow'
   });
-  const data = await response.json().catch(() => ({})) as { error?: string; account?: unknown };
+  const data = await response.json().catch(() => ({})) as { error?: string };
   if (!response.ok) {
     throw new Error(data.error || 'Pine Accounts no pudo crear la Developer Account (HTTP ' + response.status + ')');
   }
